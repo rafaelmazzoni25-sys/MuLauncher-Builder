@@ -127,6 +127,7 @@ Este documento resume os principais componentes visuais e não visuais usados no
 
 O `TPropertiesView` do Builder grava suas seleções dentro de estruturas de registro como `TOptionsData` e `TSkin`, que alimentam o launcher em tempo de execução.【F:Builder/UnitTools.pas†L119-L138】【F:Builder/UnitTools.pas†L76-L111】 Ao migrar para C#, encapsule esses dados em classes para reduzir o acoplamento entre UI e serialização e facilitar testes. Trate essas classes como um **contrato compartilhado** entre Builder e Launcher: a UI apenas coleta valores e delega validação/serialização para esse núcleo comum, enquanto o launcher consome o mesmo contrato para aplicar as skins e opções.
 
+
 ```csharp
 public sealed class LauncherOptions
 {
@@ -236,4 +237,3 @@ public sealed class SoundRegion
 1. Adapte o Builder e o Launcher para consumir o contrato compartilhado (modelos + serialização) antes de portar novas funcionalidades, garantindo interoperabilidade desde o início da migração.
 2. Planeje wrappers ou controles customizados quando o WinForms não oferecer equivalente direto (ex.: grid de propriedades customizada, grade de posicionamento no editor de skins).
 3. Implemente testes visuais incrementais, migrando formulário por formulário e conectando os eventos conforme a lógica Pascal existente.
-
