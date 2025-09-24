@@ -228,4 +228,3 @@ public sealed class SoundRegion
 1. Utilize as classes de modelo acima como contrato entre Builder e Launcher, centralizando validações e serialização dos dados de skin/opções.
 2. Planeje wrappers ou controles customizados quando o WinForms não oferecer equivalente direto (ex.: grid de propriedades customizada, grade de posicionamento no editor de skins).
 3. Implemente testes visuais incrementais, migrando formulário por formulário e conectando os eventos conforme a lógica Pascal existente.
-
