@@ -125,7 +125,8 @@ Este documento resume os principais componentes visuais e não visuais usados no
 
 ## Modelos de dados sugeridos
 
-O `TPropertiesView` do Builder grava suas seleções dentro de estruturas de registro como `TOptionsData` e `TSkin`, que alimentam o launcher em tempo de execução.【F:Builder/UnitTools.pas†L119-L138】【F:Builder/UnitTools.pas†L76-L111】 Ao migrar para C#, encapsule esses dados em classes para reduzir o acoplamento entre UI e serialização e facilitar testes.
+O `TPropertiesView` do Builder grava suas seleções dentro de estruturas de registro como `TOptionsData` e `TSkin`, que alimentam o launcher em tempo de execução.【F:Builder/UnitTools.pas†L119-L138】【F:Builder/UnitTools.pas†L76-L111】 Ao migrar para C#, encapsule esses dados em classes para reduzir o acoplamento entre UI e serialização e facilitar testes. Trate essas classes como um **contrato compartilhado** entre Builder e Launcher: a UI apenas coleta valores e delega validação/serialização para esse núcleo comum, enquanto o launcher consome o mesmo contrato para aplicar as skins e opções.
+
 
 ```csharp
 public sealed class LauncherOptions
@@ -219,12 +220,20 @@ public sealed class SoundRegion
 }
 ```
 
-- **Conversão de propriedades** — Inicialize as instâncias a partir do `PropertyGrid`/controles de edição, copiando o fluxo do `TfrmMain.ActionBuildExecute`, que lê `GeneralProperties` e popular `OptionsData` antes de empacotar o launcher.【F:Builder/UnitMain.pas†L159-L259】
-- **Serialização** — Recrie os blocos `Opt1`–`Opt9` montados no Pascal convertendo os objetos em XML ou JSON antes da etapa de criptografia/compactação; isso permite testar a montagem de dados independentemente da UI.
-- **Reutilização no Launcher** — As mesmas classes podem ser compartilhadas entre Builder e Launcher para interpretação dos dados extraídos do XML incorporado, substituindo `ParseOptions` e outras rotinas que atualmente populam registros Delphi.【F:Launcher/UnitLauncherMain.pas†L124-L229】
+- **Conversão de propriedades** — Inicialize as instâncias a partir do `PropertyGrid`/controles de edição, copiando o fluxo do `TfrmMain.ActionBuildExecute`, que lê `GeneralProperties` e popular `OptionsData` antes de empacotar o launcher.【F:Builder/UnitMain.pas†L159-L259】 Use fábricas/constructores estáticos para traduzir diretamente dos itens de UI (`PropertyGrid`, `NumericUpDown`, etc.) para as classes de modelo, mantendo a lógica no núcleo comum.
+- **Validações centralizadas** — Implemente métodos como `LauncherOptions.Validate()` e `SkinLayout.Validate()` para garantir consistência (ex.: URLs válidas, retângulos dentro do canvas, bitmaps obrigatórios). Dessa forma, o Builder chama `Validate` antes de serializar e o Launcher pode revalidar ao carregar dados distribuídos.
+- **Serialização** — Recrie os blocos `Opt1`–`Opt9` montados no Pascal convertendo os objetos em XML ou JSON antes da etapa de criptografia/compactação; isso permite testar a montagem de dados independentemente da UI. Prefira métodos como `LauncherOptions.ToXDocument()`/`FromXDocument()` ou uso de `System.Text.Json` com atributos para manter compatibilidade entre Builder e Launcher.
+- **Reutilização no Launcher** — As mesmas classes podem ser compartilhadas entre Builder e Launcher para interpretação dos dados extraídos do XML incorporado, substituindo `ParseOptions` e outras rotinas que atualmente populam registros Delphi.【F:Launcher/UnitLauncherMain.pas†L124-L229】 Ao carregar, o Launcher desserializa para os modelos, chama `Validate` e então aplica as configurações.
+
+### Fluxo recomendado usando o contrato compartilhado
+
+1. **Builder/UI → Modelos:** o formulário chama uma fábrica (por exemplo, `OptionsContract.FromPropertiesView(GeneralProperties)`), que instancia os modelos, executa `Validate` e retorna um resultado rico (sucesso/erros) para permitir mensagens amigáveis antes de prosseguir.
+2. **Serialização padronizada:** após validar, o Builder serializa os objetos com a mesma rotina utilizada pelo Launcher (`OptionsContractSerializer.Save(stream, options, skin)`), garantindo que a saída binária/criptografada carregue metadados de versão e checksums para detectar configurações inválidas.
+3. **Launcher → Aplicação:** o Launcher faz o caminho inverso (`OptionsContractSerializer.Load(stream)`), obtém instâncias dos modelos, revalida (permitindo recusar pacotes corrompidos) e apenas então aplica os valores aos controles (`ApplyToMainForm(form, models)`), mantendo a lógica de desenho concentrada em um único ponto.
+4. **Testes automatizados:** com o contrato isolado, escreva testes unitários que exercitam validações, serialização e compatibilidade de versões sem depender de WinForms, facilitando evolução futura e CI compartilhado entre as soluções.
 
 ## Próximos passos
 
-1. Utilize as classes de modelo acima como contrato entre Builder e Launcher, centralizando validações e serialização dos dados de skin/opções.
+1. Adapte o Builder e o Launcher para consumir o contrato compartilhado (modelos + serialização) antes de portar novas funcionalidades, garantindo interoperabilidade desde o início da migração.
 2. Planeje wrappers ou controles customizados quando o WinForms não oferecer equivalente direto (ex.: grid de propriedades customizada, grade de posicionamento no editor de skins).
 3. Implemente testes visuais incrementais, migrando formulário por formulário e conectando os eventos conforme a lógica Pascal existente.
