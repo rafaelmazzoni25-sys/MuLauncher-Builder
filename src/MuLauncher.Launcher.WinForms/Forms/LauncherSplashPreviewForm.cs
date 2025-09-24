@@ -6,7 +6,6 @@ using System.Windows.Forms;
 using MuLauncher.Shared.UI.Controls;
 using MuLauncher.Shared.UI.Models;
 using MuLauncher.Shared.UI.Rendering;
-using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
 
@@ -123,7 +122,7 @@ public sealed class LauncherSplashPreviewForm : Form
         }
     }
 
-    private static Bitmap ToBitmap(Image<Rgba32> image)
+    private static Bitmap ToBitmap(SixLabors.ImageSharp.Image<Rgba32> image)
     {
         using var stream = new MemoryStream();
         image.Save(stream, new PngEncoder());
