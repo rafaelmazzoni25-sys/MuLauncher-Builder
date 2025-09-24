@@ -49,8 +49,20 @@ Este documento resume os principais componentes visuais e não visuais usados no
 
 ## Considerações para janelas sem borda e desenho customizado
 
-- Formulários como o launcher principal, opções e splash removem a borda e usam eventos de mouse para arrastar a janela e eventos de pintura para desenhar a skin.【F:Launcher/UnitLauncherMain.dfm†L1-L20】【F:Launcher/UnitLauncherOptions.dfm†L1-L22】【F:Launcher/UnitLauncherSplash.dfm†L1-L19】 
+- Formulários como o launcher principal, opções e splash removem a borda e usam eventos de mouse para arrastar a janela e eventos de pintura para desenhar a skin.【F:Launcher/UnitLauncherMain.dfm†L1-L20】【F:Launcher/UnitLauncherOptions.dfm†L1-L22】【F:Launcher/UnitLauncherSplash.dfm†L1-L19】
 - Em WinForms, defina `FormBorderStyle = FormBorderStyle.None`, lide com arrasto via chamadas a `ReleaseCapture`/`SendMessage` ou manipulando `MouseDown/MouseMove`, e reimplemente a pintura em `OnPaint` usando GDI+ (`Graphics`).
+
+## Wrappers e controles customizados planejados
+
+| Necessidade Delphi | Proposta de wrapper/controle customizado | Responsabilidade principal | Observações |
+| --- | --- | --- | --- |
+| `TPropertiesView` (itens `TTextualItem`, `TComboBoxItem`, `TSpinItem`) na aba “MU Launcher Options”.【F:Builder/UnitMain.dfm†L31-L159】 | `LauncherOptionsPropertyPanel` — user control WinForms encapsulando `PropertyGrid` + editores customizados (por exemplo, `UITypeEditor` para cores, URLs e bitmaps). | Converter a seleção do usuário diretamente para as classes `LauncherOptions`/`SkinLayout`, centralizando validações (campos obrigatórios, ranges, caminhos de arquivo). | O painel expõe métodos `Bind(LauncherOptions model)` e `Collect()` para integrar com o fluxo `ActionBuildExecute`. |
+| Grade de posicionamento no editor de skins (`TRzPanel` com linhas e snapping).【F:Builder/UnitSkinEditor.dfm†L35-L49】 | `SkinLayoutSurface` — controle derivado de `Panel` com `DoubleBuffered = true` e desenho customizado da grade, suporte a arrastar componentes e “snap” configurável. | Fornecer visualização WYSIWYG das coordenadas do layout principal e opções window, reutilizando objetos `SkinLayout`. | Permitir plug-in de “gizmos” para botões (`SkinButtonHandle`) replicando os `TSpeedButton` de posicionamento. |
+| Botões bitmap (`TRzBmpButton`, `TSpeedButton` planos) criados dinamicamente no launcher e no builder.【F:Launcher/UnitLauncherMain.pas†L326-L360】【F:Builder/UnitSkinBuilder.dfm†L28-L145】 | `SkinButton` — wrapper herdado de `Button` com suporte a imagem de fundo, estados hover/pressed e carregamento direto dos bitmaps definidos no contrato de skin. | Padronizar o comportamento das ações (fechar, conectar, abrir opções, carregar arquivos) e alinhar a renderização ao que o Pascal fazia. | Expor eventos `SkinActionInvoked` para reutilizar handlers existentes enquanto os formulários são migrados. |
+| Seleção e pré-visualização de bitmaps/áreas de recorte (`TImage`, botões “Load/Region”).【F:Builder/UnitSkinBuilder.dfm†L189-L873】 | `SkinBitmapPicker` — diálogo modal combinando `OpenFileDialog`, preview e ferramenta de seleção de retângulo. | Centralizar a validação de dimensões, formatos e geração de strings serializadas (`Base64`, regiões). | Integra-se com `SkinLayoutSurface` para aplicar alterações em tempo real. |
+| Empacotamento de atualizações com feedback de progresso (`TProgressBar`, `lblProgress`).【F:Builder/UnitUpdateBuilder.pas†L166-L175】 | `PackProgressOverlay` — componente reutilizável que recebe callbacks de progresso e atualiza barras + log visual. | Permitir execução em segundo plano (Task) mantendo UI responsiva. | Útil também para o `LauncherUpdate`, compartilhando estilos e lógica de binding. |
+
+Esses wrappers residem em uma biblioteca comum (`MuLauncher.Shared.UI`) para garantir reutilização entre Builder e Launcher enquanto a migração avança.
 
 ## Catálogo de propriedades e eventos definidos em código
 
@@ -231,6 +243,15 @@ public sealed class SoundRegion
 3. **Launcher → Aplicação:** o Launcher faz o caminho inverso (`OptionsContractSerializer.Load(stream)`), obtém instâncias dos modelos, revalida (permitindo recusar pacotes corrompidos) e apenas então aplica os valores aos controles (`ApplyToMainForm(form, models)`), mantendo a lógica de desenho concentrada em um único ponto.
 4. **Testes automatizados:** com o contrato isolado, escreva testes unitários que exercitam validações, serialização e compatibilidade de versões sem depender de WinForms, facilitando evolução futura e CI compartilhado entre as soluções.
 
+## Estratégia de testes visuais incrementais
+
+1. **Migração formulário a formulário** — Converta `TfrmLauncherSplash`, `TfrmLauncherOptions`, `TfrmLauncherMain` e `TfrmLauncherUpdate` em sequência, criando protótipos WinForms que instanciam os wrappers acima e consomem dados reais exportados pelo Builder.【F:Launcher/UnitLauncherSplash.dfm†L1-L27】【F:Launcher/UnitLauncherOptions.dfm†L1-L119】【F:Launcher/UnitLauncherMain.dfm†L1-L55】【F:Launcher/UnitLauncherUpdate.dfm†L1-L76】 Cada conversão deve incluir um teste manual guiado (checklist) anexado ao repositório.
+2. **Testes automatizados com snapshots** — Para formulários sem interações complexas (por exemplo, splash e opções), use `Verify.WinForms` ou bibliotecas equivalentes para capturar imagens renderizadas a partir dos modelos `LauncherOptions`/`SkinLayout` e compará-las com baselines controlados por revisão.
+3. **Test harness compartilhado** — Implemente um executável de suporte (`Launcher.UI.SmokeTest`) que carrega as telas em sequência usando dados de demonstração e executa eventos principais (cliques, arrasto, timers). Esse harness roda em pipelines CI a cada alteração de skin/contrato.
+4. **Validação cruzada Builder ↔ Launcher** — Após migrar cada formulário, execute um teste integrando Builder (modo headless) para gerar a skin/opções e o harness do Launcher para carregá-las. Isso garante que serialização, wrappers e eventos estejam sincronizados e evita regressões antes de expandir funcionalidades.
+
+Documente os cenários e checklists em `docs/tests/visual-smoke.md` (a ser criado na primeira migração) para manter rastreabilidade.
+
 ## Adaptação imediata ao contrato compartilhado
 
 ### Builder
@@ -251,5 +272,6 @@ public sealed class SoundRegion
 
 ## Próximos passos
 
-1. Planeje wrappers ou controles customizados quando o WinForms não oferecer equivalente direto (ex.: grid de propriedades customizada, grade de posicionamento no editor de skins).
-2. Implemente testes visuais incrementais, migrando formulário por formulário e conectando os eventos conforme a lógica Pascal existente.
+1. Criar o projeto `MuLauncher.Shared.UI` com os wrappers descritos e integrá-lo ao pipeline de build.
+2. Elaborar o documento `docs/tests/visual-smoke.md` com o checklist do `TfrmLauncherSplash` e registrar as capturas iniciais de snapshot.
+3. Converter o formulário de splash para WinForms reutilizando `LauncherOptionsPropertyPanel` onde aplicável e exercitar o primeiro ciclo de teste visual automatizado.
