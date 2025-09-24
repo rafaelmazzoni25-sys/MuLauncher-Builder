@@ -127,7 +127,6 @@ Este documento resume os principais componentes visuais e não visuais usados no
 
 O `TPropertiesView` do Builder grava suas seleções dentro de estruturas de registro como `TOptionsData` e `TSkin`, que alimentam o launcher em tempo de execução.【F:Builder/UnitTools.pas†L119-L138】【F:Builder/UnitTools.pas†L76-L111】 Ao migrar para C#, encapsule esses dados em classes para reduzir o acoplamento entre UI e serialização e facilitar testes. Trate essas classes como um **contrato compartilhado** entre Builder e Launcher: a UI apenas coleta valores e delega validação/serialização para esse núcleo comum, enquanto o launcher consome o mesmo contrato para aplicar as skins e opções.
 
-
 ```csharp
 public sealed class LauncherOptions
 {
@@ -232,8 +231,25 @@ public sealed class SoundRegion
 3. **Launcher → Aplicação:** o Launcher faz o caminho inverso (`OptionsContractSerializer.Load(stream)`), obtém instâncias dos modelos, revalida (permitindo recusar pacotes corrompidos) e apenas então aplica os valores aos controles (`ApplyToMainForm(form, models)`), mantendo a lógica de desenho concentrada em um único ponto.
 4. **Testes automatizados:** com o contrato isolado, escreva testes unitários que exercitam validações, serialização e compatibilidade de versões sem depender de WinForms, facilitando evolução futura e CI compartilhado entre as soluções.
 
+## Adaptação imediata ao contrato compartilhado
+
+### Builder
+
+1. **Criar camada `Contracts` compartilhada** – Extraia as classes `LauncherOptions`, `SkinLayout` e auxiliares para um projeto/assembly separado (por exemplo, `MuLauncher.Contracts`). Referencie-o tanto no Builder quanto no Launcher para evitar duplicação. Publique também uma API estática `OptionsContractSerializer` com métodos `Load/Save` reutilizáveis.
+2. **Mapear coleta de dados do UI para modelos** – Substitua o preenchimento manual de `TOptionsData` em `ActionBuildExecute` por uma fábrica específica (ex.: `LauncherOptionsFactory.FromPropertiesView(GeneralProperties)`) que retorne instâncias do contrato e reporte erros de validação antes de prosseguir.【F:Builder/UnitMain.pas†L148-L259】
+3. **Centralizar `BuildSkin` no contrato** – Ajuste `TFrameSkinBuilder.BuildSkin` para retornar um `SkinLayout` populado, delegando conversões de bitmap/base64 para helpers na camada compartilhada. O Builder apenas chama `Validate()`/`Serialize()` e embute o resultado nos recursos gerados.【F:Builder/UnitSkinBuilder.pas†L483-L554】
+4. **Atualizar empacotamento** – Reescreva o trecho que monta os blocos `Opt1`–`Opt9` para consumir diretamente a saída do `OptionsContractSerializer.Save(...)`, garantindo que qualquer criptografia/compressão trabalhe sobre o payload padronizado.【F:Builder/UnitTools.pas†L76-L138】
+5. **Cobrir com testes** – Adicione testes unitários para `LauncherOptionsFactory` e `SkinLayoutFactory`, usando dados reais das propriedades para assegurar compatibilidade com o contrato antes de gerar executáveis.
+
+### Launcher
+
+1. **Trocar parsing XML legado** – Substitua `ParseOptions` por `OptionsContractSerializer.Load(...)`, que converte o XML/JSON distribuído diretamente para as classes do contrato e executa `Validate()` para rejeitar configurações inválidas.【F:Launcher/UnitLauncherMain.pas†L124-L229】
+2. **Reaproveitar modelos ao montar UI dinâmica** – Atualize `FormCreate` para configurar botões, browser e rótulos lendo do `SkinLayout` compartilhado ao invés dos registros Delphi, preservando a lógica de posicionamento e visibilidade.【F:Launcher/UnitLauncherMain.pas†L295-L369】【F:Launcher/UnitLauncherMain.pas†L326-L360】
+3. **Aplicar contrato em formulários auxiliares** – Faça `TfrmLauncherOptions` e `TfrmLauncherUpdate` receberem instâncias de `LauncherOptions`/`SkinLayout` (ou subestruturas) via injeção de dependência, evitando leituras diretas do registro ou recursos binários, e mantendo consistência visual com o Builder.【F:Launcher/UnitLauncherOptions.pas†L121-L216】【F:Launcher/UnitLauncherUpdate.pas†L51-L175】
+4. **Sincronizar persitência de preferências** – Utilize métodos auxiliares do contrato (por exemplo, `LauncherPreferences.ApplyTo(LauncherOptions options)`) para salvar/carregar preferências do usuário, permitindo que o Launcher e futuros utilitários compartilhem o mesmo formato.
+5. **Garantir interoperabilidade com testes** – Crie testes que carreguem pacotes gerados pelo Builder e verifiquem que todas as janelas (principal, opções, splash) aplicam corretamente as informações de skin/opções, simulando cenários de versões antigas para validar compatibilidade retroativa.
+
 ## Próximos passos
 
-1. Adapte o Builder e o Launcher para consumir o contrato compartilhado (modelos + serialização) antes de portar novas funcionalidades, garantindo interoperabilidade desde o início da migração.
-2. Planeje wrappers ou controles customizados quando o WinForms não oferecer equivalente direto (ex.: grid de propriedades customizada, grade de posicionamento no editor de skins).
-3. Implemente testes visuais incrementais, migrando formulário por formulário e conectando os eventos conforme a lógica Pascal existente.
+1. Planeje wrappers ou controles customizados quando o WinForms não oferecer equivalente direto (ex.: grid de propriedades customizada, grade de posicionamento no editor de skins).
+2. Implemente testes visuais incrementais, migrando formulário por formulário e conectando os eventos conforme a lógica Pascal existente.
