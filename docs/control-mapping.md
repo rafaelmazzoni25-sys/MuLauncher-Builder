@@ -123,8 +123,108 @@ Este documento resume os principais componentes visuais e não visuais usados no
 | `Timer1` | Ativado externamente pelo launcher principal para fechar a splash após intervalo configurado; `Timer1Timer` chama `Close`.【F:Launcher/UnitLauncherSplash.pas†L11-L36】 | `OnTimer` fecha o formulário. | Em WinForms, use `System.Windows.Forms.Timer`. |
 | Background & região | `FormCreate` carrega bitmaps do splash e aplica `SetWindowRGN` caso exista máscara; centraliza a janela na tela.【F:Launcher/UnitLauncherSplash.pas†L38-L66】 | `FormPaint` desenha a imagem e `FormClose` libera recursos/remover região.【F:Launcher/UnitLauncherSplash.pas†L68-L80】 | Replique com `Region` e `OnPaint`. |
 
+## Modelos de dados sugeridos
+
+O `TPropertiesView` do Builder grava suas seleções dentro de estruturas de registro como `TOptionsData` e `TSkin`, que alimentam o launcher em tempo de execução.【F:Builder/UnitTools.pas†L119-L138】【F:Builder/UnitTools.pas†L76-L111】 Ao migrar para C#, encapsule esses dados em classes para reduzir o acoplamento entre UI e serialização e facilitar testes.
+
+```csharp
+public sealed class LauncherOptions
+{
+    public bool ShowBrowse { get; set; }
+    public bool ShowOption { get; set; }
+    public bool ShowUpdate { get; set; }
+    public bool ShowSplash { get; set; }
+    public bool ShowStatus { get; set; }
+
+    public Color MainBackgroundColor { get; set; }
+    public Color MainFontColor { get; set; }
+    public Color OptionsBackgroundColor { get; set; }
+    public Color OptionsFontColor { get; set; }
+
+    public string BrowseUrl { get; set; } = string.Empty;
+    public string SplashBackgroundData { get; set; } = string.Empty;
+    public string SplashRegionData { get; set; } = string.Empty;
+
+    public string ServerName { get; set; } = string.Empty;
+    public string ServerAddress { get; set; } = string.Empty;
+    public string ServerPort { get; set; } = string.Empty;
+    public string ServerPage { get; set; } = string.Empty;
+
+    public string UpdateEndpoint { get; set; } = string.Empty;
+}
+
+public sealed class SkinLayout
+{
+    public SkinButtons Buttons { get; } = new();
+    public SkinBitmap MainBackground { get; set; } = new();
+    public SkinBitmap OptionsBackground { get; set; } = new();
+    public SkinBrowserRegion Browser { get; set; } = new();
+    public LabelRegion ServerStatus { get; set; } = new();
+    public IdRegion AccountId { get; set; } = new();
+    public ResolutionRegion Resolution { get; set; } = new();
+    public SoundRegion Sound { get; set; } = new();
+}
+
+public sealed class SkinButtons
+{
+    public SkinButton Close { get; } = new();
+    public SkinButton Connect { get; } = new();
+    public SkinButton Update { get; } = new();
+    public SkinButton Options { get; } = new();
+    public SkinButton CloseOptions { get; } = new();
+    public SkinButton ApplyOptions { get; } = new();
+}
+
+public sealed class SkinButton
+{
+    public string NormalBitmap { get; set; } = string.Empty;
+    public string DownBitmap { get; set; } = string.Empty;
+    public Point Position { get; set; }
+}
+
+public sealed class SkinBitmap
+{
+    public string BackgroundData { get; set; } = string.Empty;
+    public string RegionData { get; set; } = string.Empty;
+}
+
+public sealed class SkinBrowserRegion
+{
+    public Rectangle Bounds { get; set; }
+}
+
+public sealed class LabelRegion
+{
+    public Rectangle Bounds { get; set; }
+    public Color FontColor { get; set; }
+}
+
+public sealed class IdRegion
+{
+    public Rectangle Bounds { get; set; }
+    public Color FontColor { get; set; }
+    public string LabelText { get; set; } = string.Empty;
+}
+
+public sealed class ResolutionRegion
+{
+    public Rectangle LabelBounds { get; set; }
+    public IReadOnlyList<string> Options { get; init; } = Array.Empty<string>();
+}
+
+public sealed class SoundRegion
+{
+    public Rectangle LabelBounds { get; set; }
+    public IReadOnlyList<string> Options { get; init; } = Array.Empty<string>();
+}
+```
+
+- **Conversão de propriedades** — Inicialize as instâncias a partir do `PropertyGrid`/controles de edição, copiando o fluxo do `TfrmMain.ActionBuildExecute`, que lê `GeneralProperties` e popular `OptionsData` antes de empacotar o launcher.【F:Builder/UnitMain.pas†L159-L259】
+- **Serialização** — Recrie os blocos `Opt1`–`Opt9` montados no Pascal convertendo os objetos em XML ou JSON antes da etapa de criptografia/compactação; isso permite testar a montagem de dados independentemente da UI.
+- **Reutilização no Launcher** — As mesmas classes podem ser compartilhadas entre Builder e Launcher para interpretação dos dados extraídos do XML incorporado, substituindo `ParseOptions` e outras rotinas que atualmente populam registros Delphi.【F:Launcher/UnitLauncherMain.pas†L124-L229】
+
 ## Próximos passos
 
-1. Crie classes de modelo (por exemplo, `SkinLayout`, `LauncherOptions`) para representar os grupos de propriedades exibidos no `TPropertiesView`.
+1. Utilize as classes de modelo acima como contrato entre Builder e Launcher, centralizando validações e serialização dos dados de skin/opções.
 2. Planeje wrappers ou controles customizados quando o WinForms não oferecer equivalente direto (ex.: grid de propriedades customizada, grade de posicionamento no editor de skins).
 3. Implemente testes visuais incrementais, migrando formulário por formulário e conectando os eventos conforme a lógica Pascal existente.
