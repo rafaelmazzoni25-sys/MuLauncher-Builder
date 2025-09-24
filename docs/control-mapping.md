@@ -253,4 +253,3 @@ public sealed class SoundRegion
 
 1. Planeje wrappers ou controles customizados quando o WinForms não oferecer equivalente direto (ex.: grid de propriedades customizada, grade de posicionamento no editor de skins).
 2. Implemente testes visuais incrementais, migrando formulário por formulário e conectando os eventos conforme a lógica Pascal existente.
-
