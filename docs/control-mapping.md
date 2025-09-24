@@ -275,4 +275,3 @@ Documente os cenários e checklists em `docs/tests/visual-smoke.md` (a ser criad
 1. Criar o projeto `MuLauncher.Shared.UI` com os wrappers descritos e integrá-lo ao pipeline de build.
 2. Elaborar o documento `docs/tests/visual-smoke.md` com o checklist do `TfrmLauncherSplash` e registrar as capturas iniciais de snapshot.
 3. Converter o formulário de splash para WinForms reutilizando `LauncherOptionsPropertyPanel` onde aplicável e exercitar o primeiro ciclo de teste visual automatizado.
-
