@@ -128,4 +128,3 @@ Este documento resume os principais componentes visuais e não visuais usados no
 1. Crie classes de modelo (por exemplo, `SkinLayout`, `LauncherOptions`) para representar os grupos de propriedades exibidos no `TPropertiesView`.
 2. Planeje wrappers ou controles customizados quando o WinForms não oferecer equivalente direto (ex.: grid de propriedades customizada, grade de posicionamento no editor de skins).
 3. Implemente testes visuais incrementais, migrando formulário por formulário e conectando os eventos conforme a lógica Pascal existente.
-
