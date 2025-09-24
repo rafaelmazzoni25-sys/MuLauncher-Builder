@@ -5,9 +5,9 @@ using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using MuLauncher.Shared.UI.Models;
 using MuLauncher.Shared.UI.Rendering;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace MuLauncher.Launcher.WinForms.Forms;
 
@@ -131,7 +131,7 @@ public sealed class LauncherSplashForm : Form
         Invalidate();
     }
 
-    private static Bitmap ConvertToBitmap(Image<Rgba32> image)
+    private static Bitmap ConvertToBitmap(SixLabors.ImageSharp.Image<Rgba32> image)
     {
         using var memory = new System.IO.MemoryStream();
         image.Save(memory, new PngEncoder());
@@ -139,13 +139,13 @@ public sealed class LauncherSplashForm : Form
         return new Bitmap(memory);
     }
 
-    private static Region? CreateRegionFromImage(Image<Rgba32> image)
+    private static Region? CreateRegionFromImage(SixLabors.ImageSharp.Image<Rgba32> image)
     {
         var path = new GraphicsPath();
 
         for (var y = 0; y < image.Height; y++)
         {
-            var span = image.GetPixelRowSpan(y);
+            var span = image.Frames.RootFrame.GetPixelRowSpan(y);
             var start = -1;
             for (var x = 0; x < span.Length; x++)
             {
