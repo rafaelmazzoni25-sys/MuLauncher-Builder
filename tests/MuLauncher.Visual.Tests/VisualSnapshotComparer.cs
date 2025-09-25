@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 
@@ -105,11 +106,15 @@ internal static class VisualSnapshotComparer
         long diffPixels = 0;
         using var diffImage = new Image<Rgba32>(expected.Width, expected.Height);
 
+        var expectedFrame = expected.Frames.RootFrame;
+        var actualFrame = actual.Frames.RootFrame;
+        var diffFrame = diffImage.Frames.RootFrame;
+
         for (var y = 0; y < expected.Height; y++)
         {
-            var expectedRow = expected.GetPixelRowSpan(y);
-            var actualRow = actual.GetPixelRowSpan(y);
-            var diffRow = diffImage.GetPixelRowSpan(y);
+            var expectedRow = expectedFrame.GetPixelRowSpan(y);
+            var actualRow = actualFrame.GetPixelRowSpan(y);
+            var diffRow = diffFrame.GetPixelRowSpan(y);
 
             for (var x = 0; x < expectedRow.Length; x++)
             {

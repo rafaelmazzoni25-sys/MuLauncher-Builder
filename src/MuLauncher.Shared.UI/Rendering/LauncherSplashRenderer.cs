@@ -1,6 +1,7 @@
 using System;
 using MuLauncher.Shared.UI.Models;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 
@@ -30,10 +31,13 @@ public static class LauncherSplashRenderer
                     region.Mutate(ctx => ctx.Resize(output.Width, output.Height));
                 }
 
+                var outputFrame = output.Frames.RootFrame;
+                var regionFrame = region.Frames.RootFrame;
+
                 for (var y = 0; y < output.Height; y++)
                 {
-                    var row = output.GetPixelRowSpan(y);
-                    var maskRow = region.GetPixelRowSpan(y);
+                    var row = outputFrame.GetPixelRowSpan(y);
+                    var maskRow = regionFrame.GetPixelRowSpan(y);
                     for (var x = 0; x < row.Length; x++)
                     {
                         row[x].A = maskRow[x].PackedValue;
