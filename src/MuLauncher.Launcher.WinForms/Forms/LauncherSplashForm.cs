@@ -5,8 +5,9 @@ using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using MuLauncher.Shared.UI.Models;
 using MuLauncher.Shared.UI.Rendering;
-using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace MuLauncher.Launcher.WinForms.Forms;
 

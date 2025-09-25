@@ -1,14 +1,15 @@
 using System;
 using MuLauncher.Shared.UI.Models;
-using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
+using ImageSharpImage = SixLabors.ImageSharp.Image;
 
 namespace MuLauncher.Shared.UI.Rendering;
 
 public static class LauncherSplashRenderer
 {
-    public static Image<Rgba32> Render(LauncherOptions options)
+    public static ImageSharpImage<Rgba32> Render(LauncherOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
 
