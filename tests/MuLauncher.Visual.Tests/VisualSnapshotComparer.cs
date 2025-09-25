@@ -115,6 +115,10 @@ internal static class VisualSnapshotComparer
         var actualFrame = actual.Frames.RootFrame;
         var diffFrame = diffImage.Frames.RootFrame;
 
+        var expectedFrame = expected.Frames.RootFrame;
+        var actualFrame = actual.Frames.RootFrame;
+        var diffFrame = diffImage.Frames.RootFrame;
+
         for (var y = 0; y < expected.Height; y++)
         {
             var expectedRow = expectedFrame.GetPixelRowSpan(y);

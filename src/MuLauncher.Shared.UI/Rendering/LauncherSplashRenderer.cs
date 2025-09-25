@@ -1,5 +1,6 @@
 using System;
 using MuLauncher.Shared.UI.Models;
+using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
