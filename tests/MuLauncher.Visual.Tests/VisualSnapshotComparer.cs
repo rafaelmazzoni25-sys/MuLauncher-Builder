@@ -4,12 +4,13 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
+using ImageSharpImage = SixLabors.ImageSharp.Image;
 
 namespace MuLauncher.Visual.Tests;
 
 internal static class VisualSnapshotComparer
 {
-    public static bool EnsureBaselineAndCompare(Image<Rgba32> current, string baselinePath, string receivedPath, string diffPath, out string message)
+    public static bool EnsureBaselineAndCompare(ImageSharpImage<Rgba32> current, string baselinePath, string receivedPath, string diffPath, out string message)
     {
         ArgumentNullException.ThrowIfNull(current);
         Directory.CreateDirectory(Path.GetDirectoryName(receivedPath)!);
@@ -27,19 +28,19 @@ internal static class VisualSnapshotComparer
         return Compare(baseline, current, receivedPath, diffPath, out message);
     }
 
-    private static Image<Rgba32> LoadBaselineImage(string baselinePath)
+    private static ImageSharpImage<Rgba32> LoadBaselineImage(string baselinePath)
     {
         if (TryGetBase64Info(baselinePath, out _))
         {
             var base64 = File.ReadAllText(baselinePath);
             var bytes = Convert.FromBase64String(base64);
-            return Image.Load<Rgba32>(bytes);
+            return ImageSharpImage.Load<Rgba32>(bytes);
         }
 
-        return Image.Load<Rgba32>(baselinePath);
+        return ImageSharpImage.Load<Rgba32>(baselinePath);
     }
 
-    private static void SaveBaselineImage(Image<Rgba32> image, string baselinePath)
+    private static void SaveBaselineImage(ImageSharpImage<Rgba32> image, string baselinePath)
     {
         if (TryGetBase64Info(baselinePath, out var rawExtension))
         {
@@ -73,7 +74,7 @@ internal static class VisualSnapshotComparer
         return true;
     }
 
-    private static void SaveImageToStream(Image<Rgba32> image, string extension, Stream destination)
+    private static void SaveImageToStream(ImageSharpImage<Rgba32> image, string extension, Stream destination)
     {
         var normalized = extension.TrimStart('.').ToLowerInvariant();
         switch (normalized)
@@ -94,7 +95,7 @@ internal static class VisualSnapshotComparer
         }
     }
 
-    private static bool Compare(Image<Rgba32> expected, Image<Rgba32> actual, string receivedPath, string diffPath, out string message)
+    private static bool Compare(ImageSharpImage<Rgba32> expected, ImageSharpImage<Rgba32> actual, string receivedPath, string diffPath, out string message)
     {
         if (expected.Width != actual.Width || expected.Height != actual.Height)
         {
@@ -104,7 +105,15 @@ internal static class VisualSnapshotComparer
         }
 
         long diffPixels = 0;
-        using var diffImage = new Image<Rgba32>(expected.Width, expected.Height);
+        using var diffImage = new ImageSharpImage<Rgba32>(expected.Width, expected.Height);
+
+        var expectedFrame = expected.Frames.RootFrame;
+        var actualFrame = actual.Frames.RootFrame;
+        var diffFrame = diffImage.Frames.RootFrame;
+
+        var expectedFrame = expected.Frames.RootFrame;
+        var actualFrame = actual.Frames.RootFrame;
+        var diffFrame = diffImage.Frames.RootFrame;
 
         var expectedFrame = expected.Frames.RootFrame;
         var actualFrame = actual.Frames.RootFrame;
@@ -153,16 +162,16 @@ internal static class VisualSnapshotComparer
         expected.B == actual.B &&
         expected.A == actual.A;
 
-    private static void SaveArtifacts(Image<Rgba32> actual, string receivedPath, string diffPath, int expectedWidth, int expectedHeight)
+    private static void SaveArtifacts(ImageSharpImage<Rgba32> actual, string receivedPath, string diffPath, int expectedWidth, int expectedHeight)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(receivedPath)!);
-        using var canvas = new Image<Rgba32>(Math.Max(expectedWidth, actual.Width), Math.Max(expectedHeight, actual.Height));
+        using var canvas = new ImageSharpImage<Rgba32>(Math.Max(expectedWidth, actual.Width), Math.Max(expectedHeight, actual.Height));
         canvas.Mutate(ctx => ctx.Fill(Color.Black));
         canvas.SaveAsPng(diffPath);
         actual.SaveAsPng(receivedPath);
     }
 
-    private static void SaveArtifacts(Image<Rgba32> actual, string receivedPath, string diffPath, Image<Rgba32> diff)
+    private static void SaveArtifacts(ImageSharpImage<Rgba32> actual, string receivedPath, string diffPath, ImageSharpImage<Rgba32> diff)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(receivedPath)!);
         diff.SaveAsPng(diffPath);

@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using SixLabors.ImageSharp;
+using ImageSharpImage = SixLabors.ImageSharp.Image;
 using SixLabors.ImageSharp.PixelFormats;
 
 namespace MuLauncher.Shared.UI.Models;
@@ -54,24 +54,24 @@ public sealed class LauncherOptions
 
     public bool HasSplashBackground => !string.IsNullOrWhiteSpace(SplashBackgroundData);
 
-    public Image<Rgba32> LoadSplashBackgroundImage()
+    public ImageSharpImage<Rgba32> LoadSplashBackgroundImage()
     {
         if (!HasSplashBackground)
         {
             throw new InvalidOperationException("Launcher options do not contain splash background data.");
         }
 
-        return Image.Load<Rgba32>(Convert.FromBase64String(SplashBackgroundData));
+        return ImageSharpImage.Load<Rgba32>(Convert.FromBase64String(SplashBackgroundData));
     }
 
-    public Image<L8>? LoadSplashRegionMask()
+    public ImageSharpImage<L8>? LoadSplashRegionMask()
     {
         if (string.IsNullOrWhiteSpace(SplashRegionData))
         {
             return null;
         }
 
-        return Image.Load<L8>(Convert.FromBase64String(SplashRegionData));
+        return ImageSharpImage.Load<L8>(Convert.FromBase64String(SplashRegionData));
     }
 
     public LauncherOptions Clone() => new()
